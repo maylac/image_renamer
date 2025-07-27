@@ -78,6 +78,7 @@ def rename_image_files(directory: str):
             # iOSバージョンと思われるものは「iOS」に統一
             if re.match(r"^\d{1,2}(\.\d{1,2}){1,2}$", app_name):
                 app_name = "iOS"
+            
             suffix = original_path.suffix.lower()
 
             # 新しいファイル名を決定
@@ -110,6 +111,5 @@ def rename_image_files(directory: str):
     print("処理が完了しました。")
 
 if __name__ == '__main__':
-    # スクリプト実行後に対象ディレクトリのパスをユーザーに尋ねる
     directory_path = input("画像ファイルが格納されているディレクトリのパスを入力してください: ")
     rename_image_files(directory_path)
