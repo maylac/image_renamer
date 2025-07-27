@@ -1,5 +1,4 @@
 import os
-import argparse
 from pathlib import Path
 from datetime import datetime
 from PIL import Image
@@ -65,13 +64,6 @@ def rename_image_files(directory: str):
     print("処理が完了しました。")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description="画像ファイルをEXIFの撮影日時に基づいてリネームするスクリプト。"
-    )
-    parser.add_argument(
-        "directory",
-        type=str,
-        help="画像ファイルが格納されているディレクトリのパス。"
-    )
-    args = parser.parse_args()
-    rename_image_files(args.directory)
+    # スクリプト実行後に対象ディレクトリのパスをユーザーに尋ねる
+    directory_path = input("画像ファイルが格納されているディレクトリのパスを入力してください: ")
+    rename_image_files(directory_path)
