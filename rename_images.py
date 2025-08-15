@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import json # Added for parsing ExifTool JSON output
+import argparse # Added for command-line argument parsing
 from pathlib import Path
 from datetime import datetime
 from PIL import Image # Still needed for opening common image types, but not for EXIF
@@ -88,7 +89,7 @@ def rename_image_files(directory: str):
             # iOSバージョンと思われるものは「iOS」に統一
             if re.match(r"^\d{1,2}(\.\d{1,2}){1,2}$", app_name):
                 app_name = "iOS"
-            
+
             suffix = original_path.suffix.lower()
 
             new_path = get_next_filename(target_dir, date_prefix, app_name, suffix)
@@ -102,5 +103,12 @@ def rename_image_files(directory: str):
     print("処理が完了しました。")
 
 if __name__ == '__main__':
-    directory_path = input("画像ファイルが格納されているディレクトリのパスを入力してください: ")
-    rename_image_files(directory_path)
+    parser = argparse.ArgumentParser(
+        description='EXIF情報に基づいて画像ファイルをリネームします。'
+    )
+    parser.add_argument(
+        'directory',
+        help='画像ファイルが格納されているディレクトリのパス'
+    )
+    args = parser.parse_args()
+    rename_image_files(args.directory)
