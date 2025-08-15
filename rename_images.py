@@ -44,7 +44,7 @@ def get_next_filename(base_path: Path, date_str: str, app_name: str, suffix: str
             return new_path
         counter += 1
 
-def rename_image_files(directory: str, dry_run: bool):
+def rename_image_files(directory: str, dry_run: bool, recursive: bool):
     """
     指定されたディレクトリ内の画像ファイルのファイル名を、
     EXIF情報に基づいてリネームする。
@@ -56,7 +56,15 @@ def rename_image_files(directory: str, dry_run: bool):
 
     print(f"ディレクトリ '{target_dir.resolve()}' の処理を開始します...")
 
-    for original_path in sorted(target_dir.iterdir()):
+    # 再帰フラグに応じてファイルリストの取得方法を切り替える
+    if recursive:
+        print("再帰モード: サブディレクトリを検索します...")
+        files_to_process = target_dir.rglob('*')
+    else:
+        files_to_process = target_dir.iterdir()
+
+    for original_path in sorted(list(files_to_process)):
+        # rglobはディレクトリも含むため、ファイルのみを対象とする
         if not original_path.is_file() or original_path.name.startswith('.'):
             continue
 
@@ -65,6 +73,9 @@ def rename_image_files(directory: str, dry_run: bool):
             continue
 
         try:
+            # リネーム後のファイルは元ファイルと同じディレクトリに作成する
+            parent_dir = original_path.parent
+
             exif_data = get_exif_data_with_exiftool(original_path)
             date_str_exif = exif_data.get(EXIFTOOL_DATETIME_ORIGINAL_TAG)
 
@@ -80,7 +91,7 @@ def rename_image_files(directory: str, dry_run: bool):
                 app_name = "iOS"
 
             suffix = original_path.suffix.lower()
-            new_path = get_next_filename(target_dir, date_prefix, app_name, suffix)
+            new_path = get_next_filename(parent_dir, date_prefix, app_name, suffix)
 
             if dry_run:
                 print(f"[DRY RUN] リネーム: '{original_path.name}' -> '{new_path.name}'")
@@ -97,5 +108,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='EXIF情報に基づいて画像ファイルをリネームします。')
     parser.add_argument('directory', help='画像ファイルが格納されているディレクトリのパス')
     parser.add_argument('--dry-run', action='store_true', help='実際にはファイルをリネームせず、実行結果のプレビューを表示します。')
+    parser.add_argument('-r', '--recursive', action='store_true', help='サブディレクトリ内のファイルも再帰的に処理します。')
     args = parser.parse_args()
-    rename_image_files(args.directory, args.dry_run)
+    rename_image_files(args.directory, args.dry_run, args.recursive)
