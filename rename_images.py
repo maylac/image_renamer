@@ -1,11 +1,10 @@
 import os
 import re
 import subprocess
-import json # Added for parsing ExifTool JSON output
-import argparse # Added for command-line argument parsing
+import json
+import argparse
 from pathlib import Path
 from datetime import datetime
-from PIL import Image # Still needed for opening common image types, but not for EXIF
 
 # EXIF情報のタグID (ExifToolのタグ名に合わせる)
 EXIFTOOL_DATETIME_ORIGINAL_TAG = 'DateTimeOriginal'
@@ -17,16 +16,12 @@ RENAMED_FILE_PATTERN = re.compile(r"^\d{8}_\d{4}_.*")
 def get_exif_data_with_exiftool(file_path):
     """ExifToolを使ってEXIFデータをJSON形式で取得する"""
     try:
-        # ExifToolコマンドを実行し、JSON形式で出力
-        # -json: JSON形式で出力
-        # -s: タグ名を短縮 (e.g., DateTimeOriginal instead of EXIF:DateTimeOriginal)
-        # -d "%Y:%m:%d %H:%M:%S": 日付フォーマットを指定
         command = ['exiftool', '-json', '-s', '-d', '%Y:%m:%d %H:%M:%S', str(file_path)]
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         exif_json = result.stdout
         data = json.loads(exif_json)
         if data:
-            return data[0] # 最初のファイルのデータ
+            return data[0]
         return {}
     except subprocess.CalledProcessError as e:
         print(f"ExifToolの実行エラー: {e}")
@@ -49,11 +44,10 @@ def get_next_filename(base_path: Path, date_str: str, app_name: str, suffix: str
             return new_path
         counter += 1
 
-def rename_image_files(directory: str):
+def rename_image_files(directory: str, dry_run: bool):
     """
     指定されたディレクトリ内の画像ファイルのファイル名を、
     EXIF情報に基づいてリネームする。
-    フォーマット: YYYYMMDD_(連番4桁)_(撮影アプリケーション).(拡張子)
     """
     target_dir = Path(directory)
     if not target_dir.is_dir():
@@ -66,19 +60,15 @@ def rename_image_files(directory: str):
         if not original_path.is_file() or original_path.name.startswith('.'):
             continue
 
-        # 既にリネーム済みのファイルはスキップ
         if RENAMED_FILE_PATTERN.match(original_path.name):
             print(f"スキップ: '{original_path.name}' はリネーム済みです。")
             continue
 
         try:
-            # ExifToolでEXIFデータを取得
             exif_data = get_exif_data_with_exiftool(original_path)
-
             date_str_exif = exif_data.get(EXIFTOOL_DATETIME_ORIGINAL_TAG)
+
             if not date_str_exif:
-                # Fallback to file modification time if EXIF datetime is not found
-                # For now, just skip if no EXIF datetime
                 print(f"スキップ: '{original_path.name}' に撮影日時のEXIF情報がありません。")
                 continue
 
@@ -86,16 +76,17 @@ def rename_image_files(directory: str):
             date_prefix = dt_original.strftime('%Y%m%d')
 
             app_name = exif_data.get(EXIFTOOL_SOFTWARE_TAG, 'UnknownApp').replace(' ', '_')
-            # iOSバージョンと思われるものは「iOS」に統一
             if re.match(r"^\d{1,2}(\.\d{1,2}){1,2}$", app_name):
                 app_name = "iOS"
 
             suffix = original_path.suffix.lower()
-
             new_path = get_next_filename(target_dir, date_prefix, app_name, suffix)
 
-            original_path.rename(new_path)
-            print(f"リネーム: '{original_path.name}' -> '{new_path.name}'")
+            if dry_run:
+                print(f"[DRY RUN] リネーム: '{original_path.name}' -> '{new_path.name}'")
+            else:
+                original_path.rename(new_path)
+                print(f"リネーム: '{original_path.name}' -> '{new_path.name}'")
 
         except Exception as e:
             print(f"エラー: '{original_path.name}' の処理中に予期せぬエラーが発生しました: {e}")
@@ -103,12 +94,8 @@ def rename_image_files(directory: str):
     print("処理が完了しました。")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='EXIF情報に基づいて画像ファイルをリネームします。'
-    )
-    parser.add_argument(
-        'directory',
-        help='画像ファイルが格納されているディレクトリのパス'
-    )
+    parser = argparse.ArgumentParser(description='EXIF情報に基づいて画像ファイルをリネームします。')
+    parser.add_argument('directory', help='画像ファイルが格納されているディレクトリのパス')
+    parser.add_argument('--dry-run', action='store_true', help='実際にはファイルをリネームせず、実行結果のプレビューを表示します。')
     args = parser.parse_args()
-    rename_image_files(args.directory)
+    rename_image_files(args.directory, args.dry_run)
