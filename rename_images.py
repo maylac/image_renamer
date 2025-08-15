@@ -1,11 +1,11 @@
 import os
 import re
-import subprocess
-import json
 import argparse
 import logging
 from pathlib import Path
 from datetime import datetime
+
+from utils import setup_logging, get_exif_data_with_exiftool
 
 # EXIF情報のタグID (ExifToolのタグ名に合わせる)
 EXIFTOOL_DATETIME_ORIGINAL_TAG = 'DateTimeOriginal'
@@ -13,41 +13,6 @@ EXIFTOOL_SOFTWARE_TAG = 'Software'
 
 # リネーム済みファイル名の形式
 RENAMED_FILE_PATTERN = re.compile(r"^\d{8}_\d{4}_.*")
-
-def setup_logging(log_file=None):
-    """ロギングを設定する。コンソールと、指定されていればファイルにも出力する。"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        handlers=[
-            logging.StreamHandler()
-        ]
-    )
-    if log_file:
-        file_handler = logging.FileHandler(log_file, encoding='utf-8')
-        file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
-        logging.getLogger().addHandler(file_handler)
-
-def get_exif_data_with_exiftool(file_path):
-    """ExifToolを使ってEXIFデータをJSON形式で取得する"""
-    try:
-        command = ['exiftool', '-json', '-s', '-d', '%Y:%m:%d %H:%M:%S', str(file_path)]
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        exif_json = result.stdout
-        data = json.loads(exif_json)
-        if data:
-            return data[0]
-        return {}
-    except subprocess.CalledProcessError as e:
-        logging.error(f"ExifToolの実行エラー: {e}")
-        logging.error(f"Stderr: {e.stderr}")
-        return {}
-    except json.JSONDecodeError:
-        logging.error(f"ExifToolの出力がJSON形式ではありません: {exif_json}")
-        return {}
-    except FileNotFoundError:
-        logging.error("ExifToolが見つかりません。インストールされているか確認してください。")
-        return {}
 
 def get_next_filename(base_path: Path, date_str: str, app_name: str, suffix: str) -> Path:
     """指定された日付とアプリ名で、連番のファイル名を生成する"""
@@ -116,23 +81,17 @@ def rename_image_files(directory: str, dry_run: bool, recursive: bool):
     logging.info("処理が完了しました。")
 
 if __name__ == '__main__':
-    # 環境変数からデフォルト値を取得
-    # ブール値の環境変数は 'true', '1', 't' などをTrueとして解釈
     default_dry_run = os.getenv('RENAME_DRY_RUN', 'false').lower() in ('true', '1', 't')
     default_recursive = os.getenv('RENAME_RECURSIVE', 'false').lower() in ('true', '1', 't')
     default_log_file = os.getenv('RENAME_LOG_FILE')
 
-    parser = argparse.ArgumentParser(description='EXIF情報に基づいて画像ファイルをリネームします。\n環境変数でも設定が可能です: RENAME_DRY_RUN, RENAME_RECURSIVE, RENAME_LOG_FILE')
+    parser = argparse.ArgumentParser(description='EXIF情報に基づいて画像ファイルをリネームします.\n環境変数でも設定が可能です: RENAME_DRY_RUN, RENAME_RECURSIVE, RENAME_LOG_FILE')
     parser.add_argument('directory', help='画像ファイルが格納されているディレクトリのパス')
-    parser.add_argument('--dry-run', action='store_true', default=default_dry_run, help=f'実際にはファイルをリネームせず、実行結果のプレビューを表示します。デフォルト: {default_dry_run}')
-    parser.add_argument('-r', '--recursive', action='store_true', default=default_recursive, help=f'サブディレクトリ内のファイルも再帰的に処理します。デフォルト: {default_recursive}')
-    parser.add_argument('--log-file', default=default_log_file, help=f'ログをファイルに出力する場合のパス。デフォルト: {default_log_file}')
+    parser.add_argument('--dry-run', action='store_true', default=default_dry_run, help=f'デフォルト: {default_dry_run}')
+    parser.add_argument('-r', '--recursive', action='store_true', default=default_recursive, help=f'デフォルト: {default_recursive}')
+    parser.add_argument('--log-file', default=default_log_file, help=f'デフォルト: {default_log_file}')
     args = parser.parse_args()
 
-    # action='store_true'の場合、引数が指定されるとTrueになる。指定されない場合はdefault値が使われる。
-    # そのため、環境変数によるデフォルト設定とコマンドライン引数による上書きが両立する。
-    # ただし、環境変数でTrueに設定した場合、コマンドラインで明示的にFalseにする手段がこのままではない点に注意。
-    # 今回の要件では「引数が指定されたら引数が優先」なので、この実装で問題ない。
     is_dry_run = args.dry_run
     is_recursive = args.recursive
 
