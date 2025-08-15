@@ -116,13 +116,26 @@ def rename_image_files(directory: str, dry_run: bool, recursive: bool):
     logging.info("処理が完了しました。")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='EXIF情報に基づいて画像ファイルをリネームします。')
+    # 環境変数からデフォルト値を取得
+    # ブール値の環境変数は 'true', '1', 't' などをTrueとして解釈
+    default_dry_run = os.getenv('RENAME_DRY_RUN', 'false').lower() in ('true', '1', 't')
+    default_recursive = os.getenv('RENAME_RECURSIVE', 'false').lower() in ('true', '1', 't')
+    default_log_file = os.getenv('RENAME_LOG_FILE')
+
+    parser = argparse.ArgumentParser(description='EXIF情報に基づいて画像ファイルをリネームします。\n環境変数でも設定が可能です: RENAME_DRY_RUN, RENAME_RECURSIVE, RENAME_LOG_FILE')
     parser.add_argument('directory', help='画像ファイルが格納されているディレクトリのパス')
-    parser.add_argument('--dry-run', action='store_true', help='実際にはファイルをリネームせず、実行結果のプレビューを表示します。')
-    parser.add_argument('-r', '--recursive', action='store_true', help='サブディレクトリ内のファイルも再帰的に処理します。')
-    parser.add_argument('--log-file', help='ログをファイルに出力する場合のパス')
+    parser.add_argument('--dry-run', action='store_true', default=default_dry_run, help=f'実際にはファイルをリネームせず、実行結果のプレビューを表示します。デフォルト: {default_dry_run}')
+    parser.add_argument('-r', '--recursive', action='store_true', default=default_recursive, help=f'サブディレクトリ内のファイルも再帰的に処理します。デフォルト: {default_recursive}')
+    parser.add_argument('--log-file', default=default_log_file, help=f'ログをファイルに出力する場合のパス。デフォルト: {default_log_file}')
     args = parser.parse_args()
+
+    # action='store_true'の場合、引数が指定されるとTrueになる。指定されない場合はdefault値が使われる。
+    # そのため、環境変数によるデフォルト設定とコマンドライン引数による上書きが両立する。
+    # ただし、環境変数でTrueに設定した場合、コマンドラインで明示的にFalseにする手段がこのままではない点に注意。
+    # 今回の要件では「引数が指定されたら引数が優先」なので、この実装で問題ない。
+    is_dry_run = args.dry_run
+    is_recursive = args.recursive
 
     setup_logging(args.log_file)
 
-    rename_image_files(args.directory, args.dry_run, args.recursive)
+    rename_image_files(args.directory, is_dry_run, is_recursive)
