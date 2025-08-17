@@ -1,41 +1,77 @@
-# EXIF情報に基づく画像リネームツール
+# Media Organizer & Renamer
 
-このスクリプトは、指定されたディレクトリ内の画像ファイル（JPG, DNG, ARWなど）を、そのファイルのEXIF情報（撮影日時、使用したソフトウェア）に基づいて一括でリネームします。
+このプロジェクトは、画像や動画ファイルをEXIF情報に基づいて整理・リネームするための多機能ツールです。
+Dockerコンテナとして実行されることを前提としています。
 
-## ファイル名の形式
+## 主な機能
 
-リネーム後のファイル名は、以下の形式になります。
-
-`YYYYMMDD_連番4桁_アプリ名.拡張子`
-
-- **YYYYMMDD**: 撮影日
-- **連番4桁**: 同じ日に撮影された写真の連番 (0001から開始)
-- **アプリ名**: 撮影に使用されたソフトウェア名（例: `ILCE-7M4`, `iOS`など）
+- **リネーム (`rename`)**: ファイル名を `撮影日_連番_デバイス名.拡張子` の形式に一括で変更します。
+- **整理 (`organize`)**: ファイルを撮影年月日に基づいて `YYYY/MM/` のディレクトリ構造に整理・移動します。
 
 ## 必要なもの
 
-- Python 3
-- [ExifTool](https://exiftool.org/)
-
-macOSの場合は、Homebrewで簡単にインストールできます。
-
-```bash
-brew install exiftool
-```
+- Docker
+- NASまたは画像が保存されているサーバー
 
 ## 使い方
 
-1.  ターミナルでこのスクリプトがあるディレクトリに移動します。
-2.  以下のコマンドを実行します。
+このツールはDockerイメージとして配布されます。`main`ブランチにマージされるたびに、自動的にGitHub Container Registry (GHCR)に新しいイメージが公開されます。
 
-    ```bash
-    python3 rename_images.py
-    ```
+### 1. NASで最新イメージを取得
 
-3.  実行すると、リネームしたい画像ファイルが格納されているディレクトリのパスを尋ねられますので、フルパスを入力して `Enter` キーを押してください。
+NASにSSHでログインし、以下のコマンドで最新のDockerイメージを取得（プル）します。
 
-    ```
-    画像ファイルが格納されているディレクトリのパスを入力してください: /path/to/your/photos
-    ```
+```bash
+sudo docker pull ghcr.io/maylac/image-renamer:latest
+```
 
-スクリプトが自動でファイルをリネームします。
+### 2. コマンドの実行
+
+目的に応じて `rename` または `organize` コマンドを実行します。
+
+--- 
+
+### コマンド詳細
+
+#### A) ファイルのリネーム (`rename`)
+
+指定したディレクトリ内のファイル名を変更します。
+
+**実行例:**
+```bash
+# /path/to/photos 内のファイルをリネーム（プレビュー実行）
+sudo docker run --rm \
+  -v "/path/to/photos:/data" \
+  ghcr.io/maylac/image-renamer:latest \
+  rename /data --recursive --dry-run
+```
+
+**オプション:**
+- `directory`: (必須) 処理対象のディレクトリパス（コンテナ内のパス）。
+- `--recursive`, `-r`: サブディレクトリも再帰的に処理します。
+- `--force`: 一度リネームしたファイルも、再度リネームの対象とします。
+- `--dry-run`: 実際の処理は行わず、実行結果のプレビューのみ表示します。
+- `--log-file <path>`: ログを指定したファイルに出力します。
+
+--- 
+
+#### B) ファイルの整理 (`organize`)
+
+ソースディレクトリのファイルを、宛先ディレクトリに `YYYY/MM/` のフォルダを作成して移動します。
+
+**実行例:**
+```bash
+# /source_dir のファイルを /dest_dir に整理（プレビュー実行）
+sudo docker run --rm \
+  -v "/source_dir:/source" \
+  -v "/dest_dir:/destination" \
+  ghcr.io/maylac/image-renamer:latest \
+  organize --source /source --destination /destination --dry-run
+```
+
+**オプション:**
+- `--source`: (必須) 整理したいファイルがあるソースディレクトリ。
+- `--destination`: (必須) 整理後のファイルの移動先ディレクトリ。
+- `--dry-run`: 実際の処理は行わず、実行結果のプレビューのみ表示します。
+- `--log-file <path>`: ログを指定したファイルに出力します。
+```
