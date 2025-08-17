@@ -33,7 +33,6 @@ def get_device_name(exif_data):
 
     software = exif_data.get(EXIFTOOL_SOFTWARE_TAG, '')
     if software:
-        # v2.00 や 17.5.1 のようなバージョン情報を除去
         software_cleaned = re.sub(r'_?v\d+\.\d+', '', software, flags=re.IGNORECASE).strip()
         software_cleaned = re.sub(r'^\d{1,2}(\.\d{1,2}){1,2}$', 'iOS', software_cleaned)
         if software_cleaned:
@@ -41,7 +40,7 @@ def get_device_name(exif_data):
 
     return 'UnknownDevice'
 
-def rename_image_files(directory: str, dry_run: bool, recursive: bool):
+def rename_image_files(directory: str, dry_run: bool, recursive: bool, force: bool):
     """
     指定されたディレクトリ内の画像ファイルのファイル名を、
     EXIF情報に基づいてリネームする。
@@ -52,6 +51,8 @@ def rename_image_files(directory: str, dry_run: bool, recursive: bool):
         return
 
     logging.info(f"ディレクトリ '{target_dir.resolve()}' の処理を開始します...")
+    if force:
+        logging.warning("強制実行モード: リネーム済みのファイルも再処理します。")
 
     if recursive:
         logging.info("再帰モード: サブディレクトリを検索します...")
@@ -63,7 +64,8 @@ def rename_image_files(directory: str, dry_run: bool, recursive: bool):
         if not original_path.is_file() or original_path.name.startswith('.'):
             continue
 
-        if RENAMED_FILE_PATTERN.match(original_path.name):
+        # --forceが指定されていない場合のみ、リネーム済みファイルをスキップ
+        if not force and RENAMED_FILE_PATTERN.match(original_path.name):
             logging.info(f"スキップ: '{original_path.name}' はリネーム済みです。")
             continue
 
@@ -98,18 +100,17 @@ def rename_image_files(directory: str, dry_run: bool, recursive: bool):
 if __name__ == '__main__':
     default_dry_run = os.getenv('RENAME_DRY_RUN', 'false').lower() in ('true', '1', 't')
     default_recursive = os.getenv('RENAME_RECURSIVE', 'false').lower() in ('true', '1', 't')
+    default_force = os.getenv('RENAME_FORCE', 'false').lower() in ('true', '1', 't')
     default_log_file = os.getenv('RENAME_LOG_FILE')
 
-    parser = argparse.ArgumentParser(description='EXIF情報に基づいて画像ファイルをリネームします。\n環境変数でも設定が可能です: RENAME_DRY_RUN, RENAME_RECURSIVE, RENAME_LOG_FILE')
+    parser = argparse.ArgumentParser(description='EXIF情報に基づいて画像ファイルをリネームします。\n環境変数でも設定が可能です: RENAME_DRY_RUN, RENAME_RECURSIVE, RENAME_FORCE, RENAME_LOG_FILE')
     parser.add_argument('directory', help='画像ファイルが格納されているディレクトリのパス')
-    parser.add_argument('--dry-run', action='store_true', default=default_dry_run, help=f'デフォルト: {default_dry_run}')
-    parser.add_argument('-r', '--recursive', action='store_true', default=default_recursive, help=f'デフォルト: {default_recursive}')
-    parser.add_argument('--log-file', default=default_log_file, help=f'デフォルト: {default_log_file}')
+    parser.add_argument('--dry-run', action='store_true', default=default_dry_run, help=f'プレビューのみ表示します。デフォルト: {default_dry_run}')
+    parser.add_argument('-r', '--recursive', action='store_true', default=default_recursive, help=f'サブディレクトリも処理します。デフォルト: {default_recursive}')
+    parser.add_argument('--force', action='store_true', default=default_force, help=f'リネーム済みのファイルも再処理します。デフォルト: {default_force}')
+    parser.add_argument('--log-file', default=default_log_file, help=f'ログをファイルに出力します。デフォルト: {default_log_file}')
     args = parser.parse_args()
-
-    is_dry_run = args.dry_run
-    is_recursive = args.recursive
 
     setup_logging(args.log_file)
 
-    rename_image_files(args.directory, is_dry_run, is_recursive)
+    rename_image_files(args.directory, args.dry_run, args.recursive, args.force)
