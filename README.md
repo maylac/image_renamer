@@ -22,7 +22,7 @@ Dockerコンテナとして実行されることを前提としています。
 NASにSSHでログインし、以下のコマンドで最新のDockerイメージを取得（プル）します。
 
 ```bash
-sudo docker pull ghcr.io/maylac/image-renamer:latest
+sudo docker pull ghcr.io/maylac/image_renamer:latest
 ```
 
 ### 2. コマンドの実行
@@ -42,7 +42,7 @@ sudo docker pull ghcr.io/maylac/image-renamer:latest
 # /path/to/photos 内のファイルをリネーム（プレビュー実行）
 sudo docker run --rm \
   -v "/path/to/photos:/data" \
-  ghcr.io/maylac/image-renamer:latest \
+  ghcr.io/maylac/image_renamer:latest \
   rename /data --recursive --dry-run
 ```
 
@@ -65,7 +65,7 @@ sudo docker run --rm \
 sudo docker run --rm \
   -v "/source_dir:/source" \
   -v "/dest_dir:/destination" \
-  ghcr.io/maylac/image-renamer:latest \
+  ghcr.io/maylac/image_renamer:latest \
   organize --source /source --destination /destination --dry-run
 ```
 
