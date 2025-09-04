@@ -1,0 +1,30 @@
+# Python caches and build artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+.env
+
+# Git
+.git/
+.gitignore
+
+# IDE/editor
+.idea/
+.vscode/
+*.code-workspace
+
+# Logs and temp
+*.log
+tmp/
+logs/
+output/
+renamed/
+organized/
+
+# OS
+.DS_Store
+Thumbs.db

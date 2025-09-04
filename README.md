@@ -74,4 +74,24 @@ sudo docker run --rm \
 - `--destination`: (必須) 整理後のファイルの移動先ディレクトリ。
 - `--dry-run`: 実際の処理は行わず、実行結果のプレビューのみ表示します。
 - `--log-file <path>`: ログを指定したファイルに出力します。
+
+---
+
+## ローカル実行（開発向け）
+
+Docker を使わずにローカルで試す場合の手順です。
+
+1. 依存関係のインストール
+   - Python 3.9+ を用意
+   - ExifTool のインストール（macOS: `brew install exiftool`、Debian/Ubuntu: `sudo apt-get install -y libimage-exiftool-perl`）
+   - ライブラリ: `pip install -r requirements.txt`
+
+2. 実行例
+   - リネーム（プレビュー）: `python rename_images.py /path/to/photos --recursive --dry-run`
+   - 整理（プレビュー）: `python organize_files.py --source /source_dir --destination /dest_dir --dry-run`
+
+3. テスト実行
+   - `pytest`
+
+補足: 直接 `entrypoint.sh` を実行した場合は `rename` または `organize` を最初の引数に指定してください。
 ```
