@@ -112,12 +112,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     setup_logging(args.log_file)
-    # CLI からの実行時エントリポイント
     rename_image_files(
         directory=args.directory,
         dry_run=args.dry_run,
         recursive=args.recursive,
         force=args.force,
     )
-
-    rename_image_files(args.directory, args.dry_run, args.recursive, args.force)
