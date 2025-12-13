@@ -5,12 +5,13 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
-from utils import setup_logging, get_exif_data_with_exiftool
-
-# EXIF情報のタグID (ExifToolのタグ名に合わせる)
-EXIFTOOL_DATETIME_ORIGINAL_TAG = 'DateTimeOriginal'
-EXIFTOOL_MODEL_TAG = 'Model'
-EXIFTOOL_SOFTWARE_TAG = 'Software'
+from utils import (
+    setup_logging,
+    get_exif_data_with_exiftool,
+    EXIFTOOL_DATETIME_ORIGINAL_TAG,
+    EXIFTOOL_MODEL_TAG,
+    EXIFTOOL_SOFTWARE_TAG,
+)
 
 # リネーム済みファイル名の形式
 RENAMED_FILE_PATTERN = re.compile(r"^\d{8}_\d{4}_.*")

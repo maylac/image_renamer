@@ -5,10 +5,29 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
-from utils import setup_logging, get_exif_data_with_exiftool
+from utils import (
+    setup_logging,
+    get_exif_data_with_exiftool,
+    EXIFTOOL_DATETIME_ORIGINAL_TAG,
+)
 
-# EXIF情報のタグID (ExifToolのタグ名に合わせる)
-EXIFTOOL_DATETIME_ORIGINAL_TAG = 'DateTimeOriginal'
+def get_unique_filepath(target_path: Path) -> Path:
+    """衝突しないファイルパスを生成する。既存ファイルがあれば連番を付与する。"""
+    if not target_path.exists():
+        return target_path
+
+    stem = target_path.stem
+    suffix = target_path.suffix
+    parent = target_path.parent
+    counter = 1
+
+    while True:
+        new_name = f"{stem}_{counter:04d}{suffix}"
+        new_path = parent / new_name
+        if not new_path.exists():
+            return new_path
+        counter += 1
+
 
 def get_target_date(file_path):
     """ファイルの整理基準となる日付を取得する。EXIFを優先し、なければファイルの更新日時を使う。"""
@@ -45,7 +64,7 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
             month = target_date.strftime("%m")
 
             target_dir = dest_path / year / month
-            target_file_path = target_dir / file_path.name
+            target_file_path = get_unique_filepath(target_dir / file_path.name)
 
             if dry_run:
                 logging.info(f"[DRY RUN] 移動: '{file_path}' -> '{target_file_path}'")

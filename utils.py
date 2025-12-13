@@ -2,6 +2,11 @@ import logging
 import subprocess
 import json
 
+# EXIF情報のタグ名 (ExifToolのタグ名に合わせる)
+EXIFTOOL_DATETIME_ORIGINAL_TAG = 'DateTimeOriginal'
+EXIFTOOL_MODEL_TAG = 'Model'
+EXIFTOOL_SOFTWARE_TAG = 'Software'
+
 def setup_logging(log_file=None):
     """ロギングを設定する。コンソールと、指定されていればファイルにも出力する。"""
     logging.basicConfig(
