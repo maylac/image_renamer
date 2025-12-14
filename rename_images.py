@@ -4,6 +4,7 @@ import argparse
 import logging
 from pathlib import Path
 from datetime import datetime
+from tqdm import tqdm
 
 from utils import (
     setup_logging,
@@ -48,7 +49,7 @@ def get_device_name(exif_data):
 
     return DEFAULT_DEVICE_NAME
 
-def rename_image_files(directory: str, dry_run: bool = False, recursive: bool = False, force: bool = False):
+def rename_image_files(directory: str, dry_run: bool = False, recursive: bool = False, force: bool = False, quiet: bool = False):
     """
     指定されたディレクトリ内の画像ファイルのファイル名を、
     EXIF情報に基づいてリネームする。
@@ -68,12 +69,18 @@ def rename_image_files(directory: str, dry_run: bool = False, recursive: bool = 
     else:
         files_to_process = target_dir.iterdir()
 
+    # ファイルリストを作成（プログレスバーのため）
+    files_list = sorted(list(files_to_process))
+
     # 処理結果のカウンター
     success_count = 0
     skip_count = 0
     error_count = 0
 
-    for original_path in sorted(list(files_to_process)):
+    # プログレスバーの設定
+    iterator = tqdm(files_list, desc="ファイル処理中", unit="file", disable=quiet) if not quiet else files_list
+
+    for original_path in iterator:
         if not original_path.is_file() or original_path.name.startswith('.'):
             continue
 
@@ -149,6 +156,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--recursive', action='store_true', default=default_recursive, help=f'サブディレクトリも処理します。デフォルト: {default_recursive}')
     parser.add_argument('--force', action='store_true', default=default_force, help=f'リネーム済みのファイルも再処理します。デフォルト: {default_force}')
     parser.add_argument('--log-file', default=default_log_file, help=f'ログをファイルに出力します。デフォルト: {default_log_file}')
+    parser.add_argument('-q', '--quiet', action='store_true', help='プログレスバーを表示しません。')
     args = parser.parse_args()
 
     setup_logging(args.log_file)
@@ -157,4 +165,5 @@ if __name__ == '__main__':
         dry_run=args.dry_run,
         recursive=args.recursive,
         force=args.force,
+        quiet=args.quiet,
     )

@@ -183,3 +183,74 @@ def test_get_unique_filepath():
     create_dummy_image(SOURCE_DIR / "existing_0001.jpg")
     result = get_unique_filepath(existing_file)
     assert result == SOURCE_DIR / "existing_0002.jpg"
+
+
+@patch('subprocess.run')
+def test_organize_unsupported_file(mock_subprocess_run):
+    """サポート対象外のファイル形式のテスト"""
+    # サポート対象外のファイルを作成
+    unsupported_file = SOURCE_DIR / "document.txt"
+    unsupported_file.write_text("This is a text file")
+
+    from organize_files import organize_files
+    organize_files(str(SOURCE_DIR), str(DEST_DIR), dry_run=False)
+
+    # ファイルが移動されていないことを確認
+    assert unsupported_file.exists()
+    assert unsupported_file.read_text() == "This is a text file"
+
+
+@patch('subprocess.run')
+def test_organize_special_characters(mock_subprocess_run):
+    """特殊文字を含むファイル名の整理テスト"""
+    mock_subprocess_run.return_value = MagicMock(
+        stdout=json.dumps([{"DateTimeOriginal": "2023:06:15 10:00:00"}]),
+        stderr="",
+        returncode=0
+    )
+
+    # 特殊文字を含むファイル名を作成
+    original_path = SOURCE_DIR / "IMG_テスト_123.JPG"
+    create_dummy_image(original_path, "2023:06:15 10:00:00")
+
+    from organize_files import organize_files
+    organize_files(str(SOURCE_DIR), str(DEST_DIR), dry_run=False)
+
+    # ファイルが正しいディレクトリに移動されていることを確認
+    expected_path = DEST_DIR / "2023" / "06" / "IMG_テスト_123.JPG"
+    assert expected_path.exists()
+    assert not original_path.exists()
+
+
+@patch('subprocess.run')
+def test_organize_empty_directory(mock_subprocess_run):
+    """空のディレクトリの整理テスト"""
+    from organize_files import organize_files
+    # 空のディレクトリで実行
+    organize_files(str(SOURCE_DIR), str(DEST_DIR), dry_run=False)
+
+    # エラーなく完了することを確認
+    assert SOURCE_DIR.exists()
+    assert DEST_DIR.exists()
+
+
+@patch('subprocess.run')
+def test_organize_quiet_mode(mock_subprocess_run):
+    """quietモードのテスト（プログレスバー非表示）"""
+    mock_subprocess_run.return_value = MagicMock(
+        stdout=json.dumps([{"DateTimeOriginal": "2023:06:15 10:00:00"}]),
+        stderr="",
+        returncode=0
+    )
+
+    original_path = SOURCE_DIR / "IMG_1234.JPG"
+    create_dummy_image(original_path, "2023:06:15 10:00:00")
+
+    from organize_files import organize_files
+    # quietモードで実行（エラーが発生しないことを確認）
+    organize_files(str(SOURCE_DIR), str(DEST_DIR), dry_run=False, quiet=True)
+
+    # ファイルが正しいディレクトリに移動されていることを確認
+    expected_path = DEST_DIR / "2023" / "06" / "IMG_1234.JPG"
+    assert expected_path.exists()
+    assert not original_path.exists()

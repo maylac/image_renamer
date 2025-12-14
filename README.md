@@ -1,5 +1,8 @@
 # Media Organizer & Renamer
 
+[![Tests](https://github.com/maylac/image_renamer/actions/workflows/test.yml/badge.svg)](https://github.com/maylac/image_renamer/actions/workflows/test.yml)
+[![Docker](https://github.com/maylac/image_renamer/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/maylac/image_renamer/actions/workflows/docker-publish.yml)
+
 このプロジェクトは、画像や動画ファイルをEXIF情報に基づいて整理・リネームするための多機能ツールです。
 Dockerコンテナとして実行されることを前提としています。
 

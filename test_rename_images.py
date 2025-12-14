@@ -142,3 +142,103 @@ def test_skip_renamed_file(mock_subprocess_run):
     # ファイルがスキップされ、変更されていないことを確認
     assert renamed_path.exists()
     assert len(list(TEST_DIR.iterdir())) == 1 # 他のファイルが作成されていないこと
+
+
+@patch('subprocess.run')
+def test_special_characters_in_filename(mock_subprocess_run):
+    """特殊文字を含むファイル名のテスト"""
+    mock_subprocess_run.return_value = MagicMock(
+        stdout=json.dumps([{"DateTimeOriginal": "2023:01:01 10:00:00", "Software": "TestApp"}]),
+        stderr="",
+        returncode=0
+    )
+
+    # 特殊文字を含むファイル名を作成
+    original_path = TEST_DIR / "IMG_テスト_123.JPG"
+    create_dummy_image(original_path, "2023:01:01 10:00:00", "TestApp")
+
+    from rename_images import rename_image_files
+    rename_image_files(str(TEST_DIR))
+
+    # リネーム後のファイル名を確認
+    expected_name = TEST_DIR / "20230101_0001_TestApp.jpg"
+    assert expected_name.exists()
+    assert not original_path.exists()
+
+
+@patch('subprocess.run')
+def test_unsupported_file_extension(mock_subprocess_run):
+    """サポート対象外のファイル拡張子のテスト"""
+    # サポート対象外のファイルを作成
+    unsupported_file = TEST_DIR / "document.txt"
+    unsupported_file.write_text("This is a text file")
+
+    from rename_images import rename_image_files
+    rename_image_files(str(TEST_DIR))
+
+    # ファイルがスキップされ、変更されていないことを確認
+    assert unsupported_file.exists()
+    assert unsupported_file.read_text() == "This is a text file"
+
+
+@patch('subprocess.run')
+def test_large_sequence_numbers(mock_subprocess_run):
+    """大きな連番のテスト（連番の増加を確認）"""
+    mock_subprocess_run.return_value = MagicMock(
+        stdout=json.dumps([{"DateTimeOriginal": "2023:01:01 10:00:00", "Software": "TestApp"}]),
+        stderr="",
+        returncode=0
+    )
+
+    # 連番1, 2のファイルが既に存在する状況を作成
+    for i in range(1, 3):
+        existing_file = TEST_DIR / f"20230101_{i:04d}_TestApp.jpg"
+        create_dummy_image(existing_file, "2023:01:01 10:00:00", "TestApp")
+
+    # 新しいファイルを追加
+    new_file = TEST_DIR / "IMG_NEW.JPG"
+    create_dummy_image(new_file, "2023:01:01 10:00:00", "TestApp")
+
+    from rename_images import rename_image_files
+    rename_image_files(str(TEST_DIR), force=True)
+
+    # 3番目のファイルが作成されることを確認（forceモードで既存ファイルも再リネーム）
+    expected_new_file = TEST_DIR / "20230101_0003_TestApp.jpg"
+    assert expected_new_file.exists()
+    # 連番が正しく増えていることを確認
+    assert (TEST_DIR / "20230101_0001_TestApp.jpg").exists()
+    assert (TEST_DIR / "20230101_0002_TestApp.jpg").exists()
+
+
+@patch('subprocess.run')
+def test_empty_directory(mock_subprocess_run):
+    """空のディレクトリのテスト"""
+    from rename_images import rename_image_files
+    # 空のディレクトリで実行
+    rename_image_files(str(TEST_DIR))
+
+    # エラーなく完了することを確認
+    assert TEST_DIR.exists()
+    assert len(list(TEST_DIR.iterdir())) == 0
+
+
+@patch('subprocess.run')
+def test_quiet_mode(mock_subprocess_run):
+    """quietモードのテスト（プログレスバー非表示）"""
+    mock_subprocess_run.return_value = MagicMock(
+        stdout=json.dumps([{"DateTimeOriginal": "2023:01:01 10:00:00", "Software": "TestApp"}]),
+        stderr="",
+        returncode=0
+    )
+
+    original_path = TEST_DIR / "IMG_1234.JPG"
+    create_dummy_image(original_path, "2023:01:01 10:00:00", "TestApp")
+
+    from rename_images import rename_image_files
+    # quietモードで実行（エラーが発生しないことを確認）
+    rename_image_files(str(TEST_DIR), quiet=True)
+
+    # リネーム後のファイル名を確認
+    expected_name = TEST_DIR / "20230101_0001_TestApp.jpg"
+    assert expected_name.exists()
+    assert not original_path.exists()
