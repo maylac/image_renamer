@@ -9,7 +9,11 @@ from utils import (
     setup_logging,
     get_exif_data_with_exiftool,
     EXIFTOOL_DATETIME_ORIGINAL_TAG,
+    SUPPORTED_EXTENSIONS,
 )
+
+# 定数定義
+SEQUENCE_NUMBER_DIGITS = 4  # 連番の桁数
 
 def get_unique_filepath(target_path: Path) -> Path:
     """衝突しないファイルパスを生成する。既存ファイルがあれば連番を付与する。"""
@@ -22,7 +26,7 @@ def get_unique_filepath(target_path: Path) -> Path:
     counter = 1
 
     while True:
-        new_name = f"{stem}_{counter:04d}{suffix}"
+        new_name = f"{stem}_{counter:0{SEQUENCE_NUMBER_DIGITS}d}{suffix}"
         new_path = parent / new_name
         if not new_path.exists():
             return new_path
@@ -54,8 +58,19 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
 
     logging.info(f"処理を開始します。ソース: '{source_path}', 宛先: '{dest_path}'")
 
+    # 処理結果のカウンター
+    success_count = 0
+    skip_count = 0
+    error_count = 0
+
     for file_path in source_path.rglob('*'):
         if not file_path.is_file() or file_path.name.startswith('.'):
+            continue
+
+        # サポートされているファイル形式かチェック
+        if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            logging.debug(f"スキップ: '{file_path.name}' はサポート対象外のファイル形式です。")
+            skip_count += 1
             continue
 
         try:
@@ -72,17 +87,24 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
                 logging.info(f"移動: '{file_path}' -> '{target_file_path}'")
                 target_dir.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(file_path), str(target_file_path))
+            success_count += 1
 
         except PermissionError:
             logging.error(f"エラー: '{file_path}' の移動に必要な権限がありません。")
+            error_count += 1
         except OSError as e:
             logging.error(f"エラー: '{file_path}' の移動中にファイルシステムエラーが発生しました: {e}")
+            error_count += 1
         except shutil.Error as e:
             logging.error(f"エラー: '{file_path}' の移動中にエラーが発生しました: {e}")
+            error_count += 1
         except Exception as e:
             logging.error(f"エラー: '{file_path}' の処理中に予期せぬエラーが発生しました: {e}")
+            error_count += 1
 
+    # 処理結果のサマリーを表示
     logging.info("処理が完了しました。")
+    logging.info(f"結果サマリー: 成功 {success_count}件, スキップ {skip_count}件, エラー {error_count}件")
 
 if __name__ == '__main__':
     default_dry_run = os.getenv('ORGANIZE_DRY_RUN', 'false').lower() in ('true', '1', 't')
