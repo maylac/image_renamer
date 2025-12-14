@@ -34,8 +34,11 @@ def get_device_name(exif_data):
 
     software = exif_data.get(EXIFTOOL_SOFTWARE_TAG, '')
     if software:
-        software_cleaned = re.sub(r'_?v\d+\.\d+', '', software, flags=re.IGNORECASE).strip()
-        software_cleaned = re.sub(r'^\d{1,2}(\.\d{1,2}){1,2}$', 'iOS', software_cleaned)
+        # バージョン番号を削除（例: "iOS 15.6.1" -> "iOS", "MyApp_v1.2.3" -> "MyApp"）
+        software_cleaned = re.sub(r'[_\s]+v?\d+(\.\d+)*$', '', software, flags=re.IGNORECASE).strip()
+        # 数字のみの場合は "iOS" として扱う（例: "15.6.1" -> "iOS"）
+        if re.match(r'^\d{1,2}(\.\d{1,2}){1,2}$', software_cleaned):
+            software_cleaned = 'iOS'
         if software_cleaned:
             return software_cleaned.replace(' ', '_')
 
