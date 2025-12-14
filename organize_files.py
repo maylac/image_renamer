@@ -4,6 +4,7 @@ import logging
 import shutil
 from pathlib import Path
 from datetime import datetime
+from tqdm import tqdm
 
 from utils import (
     setup_logging,
@@ -47,7 +48,7 @@ def get_target_date(file_path):
     mtime = file_path.stat().st_mtime
     return datetime.fromtimestamp(mtime)
 
-def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
+def organize_files(source_dir: str, dest_dir: str, dry_run: bool, quiet: bool = False):
     """指定されたディレクトリのファイルを、日付に基づいて整理する。"""
     source_path = Path(source_dir)
     dest_path = Path(dest_dir)
@@ -58,12 +59,18 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
 
     logging.info(f"処理を開始します。ソース: '{source_path}', 宛先: '{dest_path}'")
 
+    # ファイルリストを作成（プログレスバーのため）
+    files_list = list(source_path.rglob('*'))
+
     # 処理結果のカウンター
     success_count = 0
     skip_count = 0
     error_count = 0
 
-    for file_path in source_path.rglob('*'):
+    # プログレスバーの設定
+    iterator = tqdm(files_list, desc="ファイル整理中", unit="file", disable=quiet) if not quiet else files_list
+
+    for file_path in iterator:
         if not file_path.is_file() or file_path.name.startswith('.'):
             continue
 
@@ -115,7 +122,8 @@ if __name__ == '__main__':
     parser.add_argument('--destination', required=True, help='ファイルの移動先となるルートディレクトリ')
     parser.add_argument('--log-file', default=default_log_file, help=f'ログをファイルに出力する場合のパス。デフォルト: {default_log_file}')
     parser.add_argument('--dry-run', action='store_true', default=default_dry_run, help=f'実際にはファイルの移動を行わず、実行結果をプレビューします。デフォルト: {default_dry_run}')
+    parser.add_argument('-q', '--quiet', action='store_true', help='プログレスバーを表示しません。')
 
     args = parser.parse_args()
     setup_logging(args.log_file)
-    organize_files(args.source, args.destination, args.dry_run)
+    organize_files(args.source, args.destination, args.dry_run, args.quiet)
