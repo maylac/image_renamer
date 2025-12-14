@@ -31,6 +31,16 @@ def get_exif_data_with_exiftool(file_path):
         if data:
             return data[0]
         return {}
-    except (subprocess.CalledProcessError, json.JSONDecodeError, FileNotFoundError) as e:
-        logging.error(f"ExifToolの実行エラー ({file_path}): {e}")
+    except FileNotFoundError:
+        logging.error(
+            "ExifToolが見つかりません。インストールされているか確認してください。\n"
+            "  - macOS: brew install exiftool\n"
+            "  - Debian/Ubuntu: sudo apt-get install -y libimage-exiftool-perl"
+        )
+        return {}
+    except subprocess.CalledProcessError as e:
+        logging.error(f"ExifToolの実行に失敗しました ({file_path}): {e.stderr if e.stderr else str(e)}")
+        return {}
+    except json.JSONDecodeError as e:
+        logging.error(f"ExifToolの出力をJSON形式でパースできませんでした ({file_path}): {e}")
         return {}
