@@ -73,6 +73,12 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
                 target_dir.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(file_path), str(target_file_path))
 
+        except PermissionError:
+            logging.error(f"エラー: '{file_path}' の移動に必要な権限がありません。")
+        except OSError as e:
+            logging.error(f"エラー: '{file_path}' の移動中にファイルシステムエラーが発生しました: {e}")
+        except shutil.Error as e:
+            logging.error(f"エラー: '{file_path}' の移動中にエラーが発生しました: {e}")
         except Exception as e:
             logging.error(f"エラー: '{file_path}' の処理中に予期せぬエラーが発生しました: {e}")
 

@@ -23,5 +23,5 @@ RUN chmod +x entrypoint.sh
 # スクリプトの実行コマンドを設定
 ENTRYPOINT ["./entrypoint.sh"]
 
-# デフォルトのコマンドを設定（ヘルプを表示）
-CMD ["--help"]
+# デフォルトではコマンドを指定せず、entrypoint.shがUsageを表示
+CMD []

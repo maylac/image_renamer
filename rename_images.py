@@ -87,12 +87,23 @@ def rename_image_files(directory: str, dry_run: bool = False, recursive: bool = 
             suffix = original_path.suffix.lower()
             new_path = get_next_filename(parent_dir, date_prefix, device_name, suffix)
 
+            # 新しいファイル名が元のファイル名と同じ場合はスキップ
+            if new_path == original_path:
+                logging.info(f"スキップ: '{original_path.name}' は既に正しい名前です。")
+                continue
+
             if dry_run:
                 logging.info(f"[DRY RUN] リネーム: '{original_path.name}' -> '{new_path.name}'")
             else:
                 original_path.rename(new_path)
                 logging.info(f"リネーム: '{original_path.name}' -> '{new_path.name}'")
 
+        except ValueError as e:
+            logging.error(f"エラー: '{original_path.name}' の日時フォーマットが不正です: {e}")
+        except PermissionError:
+            logging.error(f"エラー: '{original_path.name}' のリネームに必要な権限がありません。")
+        except OSError as e:
+            logging.error(f"エラー: '{original_path.name}' のリネーム中にファイルシステムエラーが発生しました: {e}")
         except Exception as e:
             logging.error(f"エラー: '{original_path.name}' の処理中に予期せぬエラーが発生しました: {e}")
 

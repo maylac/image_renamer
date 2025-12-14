@@ -37,8 +37,7 @@ def create_dummy_image(file_path: Path, datetime_str: str = None, software: str 
     img.save(file_path, exif=exif_data.tobytes())
 
 @patch('subprocess.run')
-@patch('builtins.input', return_value=str(TEST_DIR))
-def test_rename_basic(mock_input, mock_subprocess_run):
+def test_rename_basic(mock_subprocess_run):
     # ExifToolのモック設定
     mock_subprocess_run.return_value = MagicMock(
         stdout=json.dumps([{"DateTimeOriginal": "2023:01:01 10:00:00", "Software": "TestApp"}]),
@@ -60,8 +59,7 @@ def test_rename_basic(mock_input, mock_subprocess_run):
     assert not original_path.exists()
 
 @patch('subprocess.run')
-@patch('builtins.input', return_value=str(TEST_DIR))
-def test_rename_with_sequence(mock_input, mock_subprocess_run):
+def test_rename_with_sequence(mock_subprocess_run):
     # ExifToolのモック設定
     mock_subprocess_run.return_value = MagicMock(
         stdout=json.dumps([{"DateTimeOriginal": "2023:01:01 10:00:00", "Software": "TestApp"}]),
@@ -87,8 +85,7 @@ def test_rename_with_sequence(mock_input, mock_subprocess_run):
     assert not original_path2.exists()
 
 @patch('subprocess.run')
-@patch('builtins.input', return_value=str(TEST_DIR))
-def test_skip_no_exif_datetime(mock_input, mock_subprocess_run):
+def test_skip_no_exif_datetime(mock_subprocess_run):
     # ExifToolのモック設定 (DateTimeOriginalがない場合)
     mock_subprocess_run.return_value = MagicMock(
         stdout=json.dumps([{"Software": "TestApp"}]), # 日時情報なし
@@ -107,8 +104,7 @@ def test_skip_no_exif_datetime(mock_input, mock_subprocess_run):
     assert len(list(TEST_DIR.iterdir())) == 1 # 他のファイルが作成されていないこと
 
 @patch('subprocess.run')
-@patch('builtins.input', return_value=str(TEST_DIR))
-def test_remove_app_version(mock_input, mock_subprocess_run):
+def test_remove_app_version(mock_subprocess_run):
     # ExifToolのモック設定 (iOSバージョンを含むソフトウェア名)
     mock_subprocess_run.return_value = MagicMock(
         stdout=json.dumps([{"DateTimeOriginal": "2023:01:01 10:00:00", "Software": "iOS 15.6.1"}]),
@@ -128,8 +124,7 @@ def test_remove_app_version(mock_input, mock_subprocess_run):
     assert not original_path.exists()
 
 @patch('subprocess.run')
-@patch('builtins.input', return_value=str(TEST_DIR))
-def test_skip_renamed_file(mock_input, mock_subprocess_run):
+def test_skip_renamed_file(mock_subprocess_run):
     # ExifToolのモック設定
     mock_subprocess_run.return_value = MagicMock(
         stdout=json.dumps([{"DateTimeOriginal": "2023:01:01 10:00:00", "Software": "TestApp"}]),
