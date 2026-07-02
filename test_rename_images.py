@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -126,6 +127,36 @@ def test_remove_app_version(mock_input, mock_subprocess_run):
     expected_name = TEST_DIR / "20230101_0001_iOS.jpg"
     assert expected_name.exists()
     assert not original_path.exists()
+
+
+def test_get_device_name_removes_trailing_software_versions():
+    from rename_images import get_device_name
+
+    assert get_device_name({"Software": "CameraApp v1.2.3"}) == "CameraApp"
+    assert get_device_name({"Software": "iOS 15.6.1"}) == "iOS"
+
+
+@patch('subprocess.run')
+def test_rename_dry_run_reserves_sequence_numbers(mock_subprocess_run, caplog):
+    mock_subprocess_run.return_value = MagicMock(
+        stdout=json.dumps([{"DateTimeOriginal": "2023:01:01 10:00:00", "Software": "TestApp"}]),
+        stderr="",
+        returncode=0
+    )
+
+    original_path1 = TEST_DIR / "IMG_1234.JPG"
+    original_path2 = TEST_DIR / "IMG_5678.JPG"
+    create_dummy_image(original_path1, "2023:01:01 10:00:00", "TestApp")
+    create_dummy_image(original_path2, "2023:01:01 10:00:00", "TestApp")
+
+    from rename_images import rename_image_files
+    with caplog.at_level(logging.INFO):
+        rename_image_files(str(TEST_DIR), dry_run=True)
+
+    assert original_path1.exists()
+    assert original_path2.exists()
+    assert "IMG_1234.JPG' -> '20230101_0001_TestApp.jpg" in caplog.text
+    assert "IMG_5678.JPG' -> '20230101_0002_TestApp.jpg" in caplog.text
 
 @patch('subprocess.run')
 @patch('builtins.input', return_value=str(TEST_DIR))

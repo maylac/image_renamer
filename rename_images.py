@@ -16,13 +16,14 @@ from utils import (
 # リネーム済みファイル名の形式
 RENAMED_FILE_PATTERN = re.compile(r"^\d{8}_\d{4}_.*")
 
-def get_next_filename(base_path: Path, date_str: str, device_name: str, suffix: str) -> Path:
+def get_next_filename(base_path: Path, date_str: str, device_name: str, suffix: str, reserved_paths=None) -> Path:
     """指定された日付とデバイス名で、連番のファイル名を生成する"""
+    reserved_paths = reserved_paths or set()
     counter = 1
     while True:
         new_name = f"{date_str}_{counter:04d}_{device_name}{suffix}"
         new_path = base_path / new_name
-        if not new_path.exists():
+        if not new_path.exists() and new_path not in reserved_paths:
             return new_path
         counter += 1
 
@@ -34,7 +35,8 @@ def get_device_name(exif_data):
 
     software = exif_data.get(EXIFTOOL_SOFTWARE_TAG, '')
     if software:
-        software_cleaned = re.sub(r'_?v\d+\.\d+', '', software, flags=re.IGNORECASE).strip()
+        software_cleaned = software.strip()
+        software_cleaned = re.sub(r'(?:[\s_]+v?|v)\d+(\.\d+){1,2}$', '', software_cleaned, flags=re.IGNORECASE).strip()
         software_cleaned = re.sub(r'^\d{1,2}(\.\d{1,2}){1,2}$', 'iOS', software_cleaned)
         if software_cleaned:
             return software_cleaned.replace(' ', '_')
@@ -61,6 +63,8 @@ def rename_image_files(directory: str, dry_run: bool = False, recursive: bool = 
     else:
         files_to_process = target_dir.iterdir()
 
+    reserved_paths = set()
+
     for original_path in sorted(list(files_to_process)):
         if not original_path.is_file() or original_path.name.startswith('.'):
             continue
@@ -85,10 +89,11 @@ def rename_image_files(directory: str, dry_run: bool = False, recursive: bool = 
             device_name = get_device_name(exif_data)
 
             suffix = original_path.suffix.lower()
-            new_path = get_next_filename(parent_dir, date_prefix, device_name, suffix)
+            new_path = get_next_filename(parent_dir, date_prefix, device_name, suffix, reserved_paths)
 
             if dry_run:
                 logging.info(f"[DRY RUN] リネーム: '{original_path.name}' -> '{new_path.name}'")
+                reserved_paths.add(new_path)
             else:
                 original_path.rename(new_path)
                 logging.info(f"リネーム: '{original_path.name}' -> '{new_path.name}'")

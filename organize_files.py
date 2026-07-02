@@ -11,9 +11,10 @@ from utils import (
     EXIFTOOL_DATETIME_ORIGINAL_TAG,
 )
 
-def get_unique_filepath(target_path: Path) -> Path:
+def get_unique_filepath(target_path: Path, reserved_paths=None) -> Path:
     """衝突しないファイルパスを生成する。既存ファイルがあれば連番を付与する。"""
-    if not target_path.exists():
+    reserved_paths = reserved_paths or set()
+    if not target_path.exists() and target_path not in reserved_paths:
         return target_path
 
     stem = target_path.stem
@@ -24,7 +25,7 @@ def get_unique_filepath(target_path: Path) -> Path:
     while True:
         new_name = f"{stem}_{counter:04d}{suffix}"
         new_path = parent / new_name
-        if not new_path.exists():
+        if not new_path.exists() and new_path not in reserved_paths:
             return new_path
         counter += 1
 
@@ -54,8 +55,15 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
 
     logging.info(f"処理を開始します。ソース: '{source_path}', 宛先: '{dest_path}'")
 
+    source_resolved = source_path.resolve()
+    dest_resolved = dest_path.resolve()
+    skip_dest_subtree = dest_resolved != source_resolved and dest_resolved.is_relative_to(source_resolved)
+    reserved_paths = set()
+
     for file_path in source_path.rglob('*'):
         if not file_path.is_file() or file_path.name.startswith('.'):
+            continue
+        if skip_dest_subtree and file_path.resolve().is_relative_to(dest_resolved):
             continue
 
         try:
@@ -64,10 +72,11 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
             month = target_date.strftime("%m")
 
             target_dir = dest_path / year / month
-            target_file_path = get_unique_filepath(target_dir / file_path.name)
+            target_file_path = get_unique_filepath(target_dir / file_path.name, reserved_paths)
 
             if dry_run:
                 logging.info(f"[DRY RUN] 移動: '{file_path}' -> '{target_file_path}'")
+                reserved_paths.add(target_file_path)
             else:
                 logging.info(f"移動: '{file_path}' -> '{target_file_path}'")
                 target_dir.mkdir(parents=True, exist_ok=True)
