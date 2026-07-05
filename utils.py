@@ -43,7 +43,7 @@ def get_exif_data_with_exiftool(file_path):
         return {}
     except FileNotFoundError:
         logging.error(
-            "ExifToolが見つかりません。インストールされているか確認してください。\n"
+            f"ExifToolが見つかりません ({file_path})。インストールされているか確認してください。\n"
             "  - macOS: brew install exiftool\n"
             "  - Debian/Ubuntu: sudo apt-get install -y libimage-exiftool-perl"
         )

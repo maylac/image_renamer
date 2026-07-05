@@ -1,4 +1,5 @@
 import json
+import logging
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -78,6 +79,35 @@ def test_organize_dry_run(mock_subprocess_run):
 
 
 @patch('subprocess.run')
+def test_organize_dry_run_reserves_colliding_target_names(mock_subprocess_run, caplog):
+    """dry-runでも同じ移動先になるファイルには連番が割り当てられること"""
+    mock_subprocess_run.return_value = MagicMock(
+        stdout=json.dumps([{"DateTimeOriginal": "2023:06:15 10:00:00"}]),
+        stderr="",
+        returncode=0
+    )
+
+    first_dir = SOURCE_DIR / "first"
+    second_dir = SOURCE_DIR / "second"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    first_file = first_dir / "IMG_SAME.JPG"
+    second_file = second_dir / "IMG_SAME.JPG"
+    create_dummy_image(first_file, "2023:06:15 10:00:00")
+    create_dummy_image(second_file, "2023:06:15 10:00:00")
+
+    from organize_files import organize_files
+    with caplog.at_level(logging.INFO):
+        organize_files(str(SOURCE_DIR), str(DEST_DIR), dry_run=True)
+
+    assert first_file.exists()
+    assert second_file.exists()
+    assert not (DEST_DIR / "2023").exists()
+    assert str(DEST_DIR / "2023" / "06" / "IMG_SAME.JPG") in caplog.text
+    assert str(DEST_DIR / "2023" / "06" / "IMG_SAME_0001.JPG") in caplog.text
+
+
+@patch('subprocess.run')
 def test_organize_file_collision(mock_subprocess_run):
     """同名ファイルが存在する場合の衝突処理テスト"""
     mock_subprocess_run.return_value = MagicMock(
@@ -105,6 +135,32 @@ def test_organize_file_collision(mock_subprocess_run):
     expected_new_path = target_dir / "IMG_1234_0001.JPG"
     assert expected_new_path.exists()
     assert not original_path.exists()
+
+
+@patch('subprocess.run')
+def test_organize_skips_destination_inside_source(mock_subprocess_run):
+    """宛先がソース配下にある場合、宛先内の既存ファイルは再整理しない"""
+    mock_subprocess_run.return_value = MagicMock(
+        stdout=json.dumps([{"DateTimeOriginal": "2023:06:15 10:00:00"}]),
+        stderr="",
+        returncode=0
+    )
+
+    nested_dest = SOURCE_DIR / "organized"
+    nested_dest.mkdir()
+    existing_dest_file = nested_dest / "ALREADY_THERE.JPG"
+    create_dummy_image(existing_dest_file, "2023:06:15 10:00:00")
+
+    source_file = SOURCE_DIR / "IMG_1234.JPG"
+    create_dummy_image(source_file, "2023:06:15 10:00:00")
+
+    from organize_files import organize_files
+    organize_files(str(SOURCE_DIR), str(nested_dest), dry_run=False)
+
+    assert existing_dest_file.exists()
+    assert (nested_dest / "2023" / "06" / "IMG_1234.JPG").exists()
+    assert not (nested_dest / "2023" / "06" / "ALREADY_THERE.JPG").exists()
+    assert not source_file.exists()
 
 
 @patch('subprocess.run')
