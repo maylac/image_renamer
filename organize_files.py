@@ -4,12 +4,17 @@ import logging
 import shutil
 from pathlib import Path
 from datetime import datetime
+from tqdm import tqdm
 
 from utils import (
     setup_logging,
     get_exif_data_with_exiftool,
     EXIFTOOL_DATETIME_ORIGINAL_TAG,
+    SUPPORTED_EXTENSIONS,
 )
+
+# 定数定義
+SEQUENCE_NUMBER_DIGITS = 4  # 連番の桁数
 
 def get_unique_filepath(target_path: Path, reserved_paths=None) -> Path:
     """衝突しないファイルパスを生成する。既存ファイルがあれば連番を付与する。"""
@@ -23,7 +28,7 @@ def get_unique_filepath(target_path: Path, reserved_paths=None) -> Path:
     counter = 1
 
     while True:
-        new_name = f"{stem}_{counter:04d}{suffix}"
+        new_name = f"{stem}_{counter:0{SEQUENCE_NUMBER_DIGITS}d}{suffix}"
         new_path = parent / new_name
         if not new_path.exists() and new_path not in reserved_paths:
             return new_path
@@ -44,7 +49,7 @@ def get_target_date(file_path):
     mtime = file_path.stat().st_mtime
     return datetime.fromtimestamp(mtime)
 
-def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
+def organize_files(source_dir: str, dest_dir: str, dry_run: bool, quiet: bool = False):
     """指定されたディレクトリのファイルを、日付に基づいて整理する。"""
     source_path = Path(source_dir)
     dest_path = Path(dest_dir)
@@ -60,10 +65,27 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
     skip_dest_subtree = dest_resolved != source_resolved and dest_resolved.is_relative_to(source_resolved)
     reserved_paths = set()
 
-    for file_path in source_path.rglob('*'):
+    # ファイルリストを作成（プログレスバーのため）
+    files_list = list(source_path.rglob('*'))
+
+    # 処理結果のカウンター
+    success_count = 0
+    skip_count = 0
+    error_count = 0
+
+    # プログレスバーの設定
+    iterator = tqdm(files_list, desc="ファイル整理中", unit="file", disable=quiet) if not quiet else files_list
+
+    for file_path in iterator:
         if not file_path.is_file() or file_path.name.startswith('.'):
             continue
         if skip_dest_subtree and file_path.resolve().is_relative_to(dest_resolved):
+            continue
+
+        # サポートされているファイル形式かチェック
+        if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            logging.debug(f"スキップ: '{file_path.name}' はサポート対象外のファイル形式です。")
+            skip_count += 1
             continue
 
         try:
@@ -81,11 +103,24 @@ def organize_files(source_dir: str, dest_dir: str, dry_run: bool):
                 logging.info(f"移動: '{file_path}' -> '{target_file_path}'")
                 target_dir.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(file_path), str(target_file_path))
+            success_count += 1
 
+        except PermissionError:
+            logging.error(f"エラー: '{file_path}' の移動に必要な権限がありません。")
+            error_count += 1
+        except OSError as e:
+            logging.error(f"エラー: '{file_path}' の移動中にファイルシステムエラーが発生しました: {e}")
+            error_count += 1
+        except shutil.Error as e:
+            logging.error(f"エラー: '{file_path}' の移動中にエラーが発生しました: {e}")
+            error_count += 1
         except Exception as e:
             logging.error(f"エラー: '{file_path}' の処理中に予期せぬエラーが発生しました: {e}")
+            error_count += 1
 
+    # 処理結果のサマリーを表示
     logging.info("処理が完了しました。")
+    logging.info(f"結果サマリー: 成功 {success_count}件, スキップ {skip_count}件, エラー {error_count}件")
 
 if __name__ == '__main__':
     default_dry_run = os.getenv('ORGANIZE_DRY_RUN', 'false').lower() in ('true', '1', 't')
@@ -96,7 +131,8 @@ if __name__ == '__main__':
     parser.add_argument('--destination', required=True, help='ファイルの移動先となるルートディレクトリ')
     parser.add_argument('--log-file', default=default_log_file, help=f'ログをファイルに出力する場合のパス。デフォルト: {default_log_file}')
     parser.add_argument('--dry-run', action='store_true', default=default_dry_run, help=f'実際にはファイルの移動を行わず、実行結果をプレビューします。デフォルト: {default_dry_run}')
+    parser.add_argument('-q', '--quiet', action='store_true', help='プログレスバーを表示しません。')
 
     args = parser.parse_args()
     setup_logging(args.log_file)
-    organize_files(args.source, args.destination, args.dry_run)
+    organize_files(args.source, args.destination, args.dry_run, args.quiet)
