@@ -98,6 +98,7 @@ Docker を使わずにローカルで試す場合の手順です。
    - Python 3.9+ を用意
    - ExifTool のインストール（macOS: `brew install exiftool`、Debian/Ubuntu: `sudo apt-get install -y libimage-exiftool-perl`）
    - ライブラリ: `pip install -r requirements.txt`
+   - テスト/開発用ライブラリ（テスト実行時のみ必要）: `pip install -r requirements-dev.txt`
 
 2. 実行例
    - リネーム（プレビュー）: `python rename_images.py /path/to/photos --recursive --dry-run`
